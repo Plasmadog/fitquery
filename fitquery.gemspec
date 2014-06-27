@@ -9,7 +9,7 @@ Gem::Specification.new do |spec|
   spec.authors       = ["Tony Peguero"]
   spec.email         = ["tony.peguero@payglobal.com"]
   spec.summary       = %q{Tools for inspecting and querying a FitNesse test hierarchy}
-  spec.homepage      = ""
+  spec.homepage      = "https://github.com/Plasmadog/fitquery"
   spec.license       = "MIT"
 
   spec.files         = `git ls-files -z`.split("\x0")
