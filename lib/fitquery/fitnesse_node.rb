@@ -168,6 +168,21 @@ class FitnesseNode
     tag_set.any? {|t| t.match(pattern) }
   end
 
+  # Set a new explicit tag on the node and write it to the properties file immediately.
+  # @param tag [String] The tag to add.
+  def set_tag(tag)
+    File.open(@path.join('properties.xml'), 'w') do |f|
+      @explicit_tags.add(tag)
+      suites_elements = @properties.get_elements('/properties/Suites')
+      tags_element = suites_elements.empty? ? @properties.root.add_element('Suites') : suites_elements.first
+      tags_element.text = @explicit_tags.to_a.join(', ')
+      formatter = REXML::Formatters::Default.new
+      formatter.write(@properties, f)
+    end
+  rescue => ex
+    STDERR.puts(ex.message)
+  end
+
   def to_s
     full_name
   end
