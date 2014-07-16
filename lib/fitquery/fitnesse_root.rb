@@ -48,6 +48,25 @@ class FitnesseRoot
   def find(&block)
     @root_node.find(&block)
   end
+
+  def find_name(name, sep = File::SEPARATOR)
+    name_as_array = case name
+                      when Array then
+                        name
+                      when String then
+                        name.split(sep)
+                      when Pathname then
+                        name.to_s.split(File::SEPARATOR)
+                      else
+                        raise ArgumentError.new("Name must be an Array, String, or Pathname. Was #{name.class}.")
+                    end
+    find {|node|
+      next if node.root?
+      full_name = node.path_as_array
+      Find.prune unless (full_name - name_as_array).empty?
+      return node if full_name == name_as_array
+    }
+  end
 end
 
 

@@ -11,19 +11,24 @@ require 'find'
 # @attr_reader [FitnesseNode,FitnesseRoot] parent The parent of this node (which may be the root object)
 # @attr_reader [Array<FitnesseNode>] children The child nodes of this node.
 # @attr_reader [Pathname] path The path of this node's folder.
+# @attr_reader [Array<String>] path_as_array The path relative to the root, as an array of strings.
 # @attr_reader [String] name The name of this node. This is the "short" name of the node itself, not the fully qualified name.
 # @attr_reader [Rexml::Document] properties The properties XML document of this node.
 # @attr_reader [SortedSet<String>] explicit_tags The set of tags that have been explicitly set on this node.
 class FitnesseNode
-  attr_reader :root, :parent, :children, :path, :name, :properties, :explicit_tags
+  attr_reader :root, :parent, :children, :path, :path_as_array, :name, :properties, :explicit_tags
 
 
   def initialize(root, parent, name)
     @root = root
     @parent = parent
     @children = []
+    @is_root = name == :root
     @name = name.to_s
     @path = name == :root ? parent.path : Pathname.new(parent.path.join(name))
+    @path_as_array = []
+    @path.relative_path_from(@root.path).descend{|partial| @path_as_array.push(partial.basename.to_s)}
+
     begin
       File.open(@path.join('properties.xml'), 'r') {|f|	@properties = REXML::Document.new f	}
     rescue
@@ -108,19 +113,18 @@ class FitnesseNode
   # @param sep [String] Sets the preferred separator string for the name. If nil, the name will use the system default file path separator.
   # @return [String] The fully qualified name of the node, consisting of the names of each node in the tree leading to this one.
   def full_name(sep = nil)
-    rel_path = @path.relative_path_from(@root.path)
-    if sep.nil?
-      rel_path.to_s
-    else
-      rel_path.to_s.gsub(Pathname::SEPARATOR_PAT, sep)
-    end
+    separator = sep.nil? ? File::SEPARATOR : sep
+    @path_as_array.join(separator)
+  end
+
+  def dotted_name
+    full_name('.')
   end
 
   # Gets the depth of this node, i.e. the number of levels down the tree from the root node.
   # @return [Integer] The depth of the node
   def depth
-    rel_path = @path.relative_path_from(@root.path)
-    rel_path.to_s.scan(Pathname::SEPARATOR_PAT).size
+    @path_as_array.length
   end
 
   # Gets the name of the node, prefixed with a number of characters determined by the node's depth.
@@ -181,6 +185,15 @@ class FitnesseNode
     end
   rescue => ex
     STDERR.puts(ex.message)
+  end
+
+  # Get the content of the node. Uses lazy loading to avoid slowing down the initial parsing of the tree.
+  def content
+    @content ||= IO::read(@path.join('content.txt'))
+  end
+
+  def root?
+    @is_root
   end
 
   def to_s
