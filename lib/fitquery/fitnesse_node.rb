@@ -16,13 +16,14 @@ require 'find'
 # @attr_reader [Rexml::Document] properties The properties XML document of this node.
 # @attr_reader [SortedSet<String>] explicit_tags The set of tags that have been explicitly set on this node.
 class FitnesseNode
+  include Enumerable
   attr_reader :root, :parent, :children, :path, :path_as_array, :name, :properties, :explicit_tags
 
 
   def initialize(root, parent, name)
     @root = root
     @parent = parent
-    @children = []
+    @children = {}
     @is_root = name == :root
     @name = name.to_s
     @path = name == :root ? parent.path : Pathname.new(parent.path.join(name))
@@ -47,7 +48,7 @@ class FitnesseNode
       rel_path = sub.relative_path_from(@root.path)
       next if @root.blacklist.any? {|blacklisted| rel_path.fnmatch?(blacklisted) }
       child_node = FitnesseNode.new(@root, self, sub.basename)
-      @children.push(child_node) unless child_node.nil?
+      @children[child_node.name] = child_node unless child_node.nil?
     end
   end
 
@@ -56,7 +57,7 @@ class FitnesseNode
   def traverse(order = :pre, &block)
     yield self if order == :pre
     unless @children.nil?
-      @children.each do |child|
+      @children.each_value do |child|
         child.traverse(&block)
       end
     end
@@ -78,7 +79,7 @@ class FitnesseNode
     catch(:prune) do
       yield self
       unless @children.nil?
-        @children.each do |child|
+        @children.each_value do |child|
           child.find(&block)
         end
       end
@@ -153,10 +154,11 @@ class FitnesseNode
     @properties.nil? ? false : (@properties.get_elements('/properties/Static').count > 0)
   end
 
-  # @return [Boolean] Is this node runable? I.e. is it either a test or a suite which is not skipped?
-  def runable?
+  # @return [Boolean] Is this node runnable? I.e. is it either a test or a suite which is not skipped?
+  def runnable?
     !static? && !effectively_skipped? && (test? || suite?)
   end
+  alias runable? runnable?
 
   # Determine whether this node has a particular tag on it.
   # @param tag [String,Regexp] The tag to find. If a string, the search will be case insensitive.

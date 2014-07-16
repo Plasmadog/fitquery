@@ -63,8 +63,8 @@ class FitnesseRoot
     find {|node|
       next if node.root?
       full_name = node.path_as_array
-      Find.prune unless (full_name - name_as_array).empty?
       return node if full_name == name_as_array
+      Find.prune unless (full_name - name_as_array).empty?
     }
   end
 end
